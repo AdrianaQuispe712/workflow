@@ -105,6 +105,17 @@ try {
     $pdo->exec($sql_solicitudes);
     echo "Tabla 'solicitudes' creada exitosamente.\n";
     
+    // Crear tabla tramites para generar números únicos
+    $sql_tramites = "
+    CREATE TABLE IF NOT EXISTS tramites (
+        nrotramite SERIAL PRIMARY KEY,
+        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        usuario_creador VARCHAR(20),
+        estado VARCHAR(20) DEFAULT 'activo'
+    )";
+    $pdo->exec($sql_tramites);
+    echo "Tabla 'tramites' creada exitosamente.\n";
+    
     // Insertar usuarios
     $pdo->exec("INSERT INTO usuarios (usuario, clave, rol) VALUES ('msilva', '123456', 'alumno')");
     $pdo->exec("INSERT INTO usuarios (usuario, clave, rol) VALUES ('edward', '123456', 'secretaria')");
@@ -116,39 +127,61 @@ try {
                VALUES ('Mario', 'Silva', 'Perez', '12345678', 'SIS202412345', 'Ingeniería de Sistemas')");
     echo "Alumno de prueba insertado exitosamente.\n";
     
-    // Flujo F1: Certificado de Notas (5 procesos)
-    $procesos = [
-        // Proceso 1: Estudiante solicita
-        ['F1', 'P1', 'P2', 'P', 'alumno', 'nota', 'Solicitud del estudiante'],
+    // FLUJO F1: Solicitud y Revisión (3 procesos)
+    $procesos_f1 = [
+        // Proceso 1: Estudiante solicita certificado
+        ['F1', 'P1', 'P2', 'P', 'alumno', 'nota', 'Solicitud del estudiante - Certificado de Notas'],
         // Proceso 2: Secretaria recibe y revisa documentos
-        ['F1', 'P2', 'P3', 'P', 'secretaria', 'recepcion', 'Recepción por secretaria'],
-        // Proceso 3: Kardex verifica datos académicos
-        ['F1', 'P3', 'P4', 'P', 'kardex', 'recepcionar2', 'Verificación en kardex'],
-        // Proceso 4: Kardex evalúa si aprueba o rechaza
-        ['F1', 'P4', null, 'Q', 'kardex', 'pregunta', 'Evaluación final'],
-        // Proceso 5a: Si es rechazado - notifica rechazo
-        ['F1', 'P5', null, 'E', 'alumno', 'rechazo', 'Notificación de rechazo'],
-        // Proceso 5b: Si es aprobado - emite certificado
-        ['F1', 'P6', null, 'E', 'kardex', 'conclusion', 'Emisión de certificado']
+        ['F1', 'P2', 'P3', 'P', 'secretaria', 'recepcion', 'Recepción y revisión por secretaria'],
+        // Proceso 3: Secretaria evalúa si pasa a kardex (pregunta condicional)
+        ['F1', 'P3', null, 'Q', 'secretaria', 'pregunta_secretaria', 'Evaluación de documentos completos']
     ];
     
-    foreach ($procesos as $proceso) {
+    // FLUJO F2: Verificación y Emisión (2 procesos)
+    $procesos_f2 = [
+        // Proceso 1: Kardex verifica datos académicos
+        ['F2', 'P1', 'P2', 'P', 'kardex', 'recepcionar2', 'Verificación académica en kardex'],
+        // Proceso 2: Kardex emite certificado (proceso final)
+        ['F2', 'P2', null, 'E', 'kardex', 'conclusion', 'Emisión del certificado']
+    ];
+    
+    // Proceso de rechazo si documentos incompletos
+    $proceso_rechazo = [
+        ['F1', 'P4', null, 'E', 'alumno', 'rechazo', 'Notificación de documentos incompletos']
+    ];
+    
+    // Insertar todos los procesos
+    $todos_procesos = array_merge($procesos_f1, $procesos_f2, $proceso_rechazo);
+    
+    foreach ($todos_procesos as $proceso) {
         $stmt = $pdo->prepare("INSERT INTO flujoproceso (flujo, proceso, siguiente, tipo, rol, pantalla, descripcion) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute($proceso);
     }
-    echo "Flujo de procesos insertado exitosamente.\n";
+    echo "Flujos de procesos insertados exitosamente.\n";
     
-    // Insertar pregunta de decisión
-    $pdo->exec("INSERT INTO flujoprocesopregunta (flujo, proceso, si, no) VALUES ('F1', 'P4', 'P6', 'P5')");
-    echo "Pregunta de flujo insertada exitosamente.\n";
+    // Insertar preguntas de decisión
+    // F1-P3: Si documentos completos -> F2-P1, si incompletos -> F1-P4 (rechazo)
+    $pdo->exec("INSERT INTO flujoprocesopregunta (flujo, proceso, si, no) VALUES ('F1', 'P3', 'F2P1', 'P4')");
+    echo "Preguntas de flujo insertadas exitosamente.\n";
     
     echo "\n¡Base de datos configurada correctamente!\n";
-    echo "Flujo F1 - Certificado de Notas:\n";
-    echo "P1: Alumno solicita (alumno)\n";
-    echo "P2: Secretaria recibe (secretaria)\n";
-    echo "P3: Kardex verifica (kardex)\n";
-    echo "P4: Kardex evalúa (kardex - pregunta)\n";
-    echo "P5: Rechazo (alumno ve rechazo) o P6: Aprobación (kardex emite)\n";
+    echo "===========================================\n";
+    echo "FLUJO F1 - Solicitud y Revisión (3 procesos):\n";
+    echo "  P1: Alumno solicita certificado (alumno)\n";
+    echo "  P2: Secretaria recibe documentos (secretaria)\n";
+    echo "  P3: Secretaria evalúa completitud (secretaria - pregunta)\n";
+    echo "    -> SI: Pasa a F2-P1 (kardex)\n";
+    echo "    -> NO: Va a F1-P4 (rechazo)\n";
+    echo "  P4: Notificación de rechazo (alumno)\n";
+    echo "\n";
+    echo "FLUJO F2 - Verificación y Emisión (2 procesos):\n";
+    echo "  P1: Kardex verifica datos académicos (kardex)\n";
+    echo "  P2: Kardex emite certificado (kardex - final)\n";
+    echo "\n";
+    echo "USUARIOS DE PRUEBA:\n";
+    echo "  msilva / 123456 (alumno)\n";
+    echo "  edward / 123456 (secretaria)\n";
+    echo "  zulema / 123456 (kardex)\n";
     echo "\nAhora puedes ejecutar: php -S localhost:3000\n";
     
 } catch(PDOException $e) {

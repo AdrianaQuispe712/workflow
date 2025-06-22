@@ -40,23 +40,34 @@ $stmt->execute($params);
 <html>
 <head>
     <title>Bandeja de Trámites - Workflow FCPN</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .flujo-f1 { background-color: #e7f3ff; }
+        .flujo-f2 { background-color: #f0fff0; }
+        .header-info { background-color: #f8f9fa; padding: 10px; margin: 10px 0; }
+        .proceso-info { font-size: 0.9em; color: #666; }
+    </style>
 </head>
 <body>
     <h2>Sistema de Workflow - FCPN</h2>
-    <table border="1">
-        <tr>
-            <td><strong>Usuario:</strong> <?php echo htmlspecialchars($_SESSION["usuario"]); ?></td>
-            <td><strong>Rol:</strong> <?php echo htmlspecialchars($_SESSION["rol"]); ?></td>
-            <td><a href="logout.php">Cerrar Sesión</a></td>
-        </tr>
-    </table>
+    <div class="header-info">
+        <table>
+            <tr>
+                <td><strong>Usuario:</strong> <?php echo htmlspecialchars($_SESSION["usuario"]); ?></td>
+                <td><strong>Rol:</strong> <?php echo htmlspecialchars($_SESSION["rol"]); ?></td>
+                <td><a href="logout.php">Cerrar Sesión</a></td>
+            </tr>
+        </table>
+    </div>
     
-    <h3>Trámites Pendientes</h3>
-    <table border="1" width="100%">
+    <h3>📋 Trámites Pendientes</h3>
+    <table>
         <tr>
             <th>Nro. Trámite</th>
-            <th>Flujo</th>
-            <th>Proceso</th>
+            <th>Flujo-Proceso</th>
             <th>Descripción</th>
             <th>Tipo Solicitud</th>
             <th>Usuario Actual</th>
@@ -68,11 +79,11 @@ $stmt->execute($params);
         $hay_tramites = false;
         while ($fila = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $hay_tramites = true;
-            echo "<tr>";
+            $clase_flujo = ($fila["flujo"] == 'F1') ? 'flujo-f1' : 'flujo-f2';
+            echo "<tr class='$clase_flujo'>";
             echo "<td>" . htmlspecialchars($fila["nrotramite"]) . "</td>";
-            echo "<td>" . htmlspecialchars($fila["flujo"]) . "</td>";
-            echo "<td>" . htmlspecialchars($fila["proceso"]) . "</td>";
-            echo "<td>" . htmlspecialchars($fila["descripcion"]) . "</td>";
+            echo "<td><strong>" . htmlspecialchars($fila["flujo"]) . "-" . htmlspecialchars($fila["proceso"]) . "</strong></td>";
+            echo "<td>" . htmlspecialchars($fila["descripcion"]) . "<br><span class='proceso-info'>Flujo: " . ($fila["flujo"] == 'F1' ? 'Solicitud y Revisión' : 'Verificación y Emisión') . "</span></td>";
             echo "<td>" . htmlspecialchars($fila["tipo_solicitud"]) . "</td>";
             echo "<td>" . htmlspecialchars($fila["usuario"]) . "</td>";
             echo "<td>" . htmlspecialchars($fila["fecha_inicio"]) . "</td>";
@@ -84,24 +95,24 @@ $stmt->execute($params);
         }
         
         if (!$hay_tramites) {
-            echo "<tr><td colspan='9'>No hay trámites pendientes</td></tr>";
+            echo "<tr><td colspan='8'>No hay trámites pendientes</td></tr>";
         }
         ?>
     </table>
     
     <?php if ($rol == 'alumno'): ?>
     <br>
-    <h3>Iniciar Nuevo Trámite</h3>
-    <table border="1">
+    <h3>🆕 Iniciar Nuevo Trámite</h3>
+    <table>
         <tr>
-            <td><a href="iniciar_tramite.php">Solicitar Certificado de Notas</a></td>
-            <td>Iniciar proceso de solicitud de certificado</td>
+            <td><a href="iniciar_tramite.php" style="text-decoration: none; background-color: #007bff; color: white; padding: 10px 15px; border-radius: 5px;">📄 Solicitar Certificado de Notas</a></td>
+            <td>Iniciar proceso completo de solicitud de certificado (Flujos F1 y F2)</td>
         </tr>
     </table>
     <?php endif; ?>
     
     <br>
-    <h3>Historial de Trámites Finalizados</h3>
+    <h3>📚 Historial de Trámites Finalizados</h3>
     <?php
     // Mostrar trámites finalizados
     if ($rol == 'alumno') {
@@ -124,9 +135,10 @@ $stmt->execute($params);
         $stmt_hist->execute([$rol]);
     }
     ?>
-    <table border="1" width="100%">
+    <table>
         <tr>
             <th>Nro. Trámite</th>
+            <th>Flujo</th>
             <th>Tipo</th>
             <th>Descripción</th>
             <th>Estado Final</th>
@@ -138,6 +150,7 @@ $stmt->execute($params);
             $hay_hist = true;
             echo "<tr>";
             echo "<td>" . htmlspecialchars($hist["nrotramite"]) . "</td>";
+            echo "<td>" . htmlspecialchars($hist["flujo"]) . "</td>";
             echo "<td>" . htmlspecialchars($hist["tipo_solicitud"]) . "</td>";
             echo "<td>" . htmlspecialchars($hist["descripcion"]) . "</td>";
             echo "<td>" . htmlspecialchars($hist["estado"]) . "</td>";
@@ -146,9 +159,25 @@ $stmt->execute($params);
         }
         
         if (!$hay_hist) {
-            echo "<tr><td colspan='5'>No hay trámites finalizados</td></tr>";
+            echo "<tr><td colspan='6'>No hay trámites finalizados</td></tr>";
         }
         ?>
     </table>
+    
+    <br>
+    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
+        <h4>📖 Información del Sistema de Workflow</h4>
+        <p><strong>FLUJO F1 - Solicitud y Revisión (3 procesos):</strong></p>
+        <ul>
+            <li>P1: Alumno solicita certificado</li>
+            <li>P2: Secretaria recibe documentos</li>
+            <li>P3: Secretaria evalúa completitud → SI: pasa a F2 | NO: rechaza</li>
+        </ul>
+        <p><strong>FLUJO F2 - Verificación y Emisión (2 procesos):</strong></p>
+        <ul>
+            <li>P1: Kardex verifica datos académicos</li>
+            <li>P2: Kardex emite certificado (FINAL)</li>
+        </ul>
+    </div>
 </body>
 </html>
