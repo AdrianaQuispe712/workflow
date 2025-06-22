@@ -116,6 +116,38 @@ try {
     $pdo->exec($sql_tramites);
     echo "Tabla 'tramites' creada exitosamente.\n";
     
+    // Crear tabla certificados emitidos
+    $sql_certificados = "
+    CREATE TABLE IF NOT EXISTS certificados (
+        id SERIAL PRIMARY KEY,
+        nrotramite INTEGER,
+        nro_certificado VARCHAR(50),
+        fecha_emision DATE,
+        tipo_certificado VARCHAR(50),
+        usuario_estudiante VARCHAR(20),
+        observaciones_finales TEXT,
+        estado VARCHAR(20) DEFAULT 'emitido',
+        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )";
+    $pdo->exec($sql_certificados);
+    echo "Tabla 'certificados' creada exitosamente.\n";
+    
+    // Crear tabla notas del estudiante
+    $sql_notas = "
+    CREATE TABLE IF NOT EXISTS academico.notas (
+        id SERIAL PRIMARY KEY,
+        codigo_sis VARCHAR(20),
+        materia VARCHAR(100),
+        sigla VARCHAR(10),
+        nota INTEGER,
+        gestion INTEGER,
+        periodo VARCHAR(10),
+        creditos INTEGER DEFAULT 4,
+        estado VARCHAR(20) DEFAULT 'aprobado'
+    )";
+    $pdo->exec($sql_notas);
+    echo "Tabla 'academico.notas' creada exitosamente.\n";
+    
     // Insertar usuarios
     $pdo->exec("INSERT INTO usuarios (usuario, clave, rol) VALUES ('msilva', '123456', 'alumno')");
     $pdo->exec("INSERT INTO usuarios (usuario, clave, rol) VALUES ('edward', '123456', 'secretaria')");
@@ -126,6 +158,24 @@ try {
     $pdo->exec("INSERT INTO academico.alumno (nombre, paterno, materno, ci, codigo_sis, carrera) 
                VALUES ('Mario', 'Silva', 'Perez', '12345678', 'SIS202412345', 'Ingeniería de Sistemas')");
     echo "Alumno de prueba insertado exitosamente.\n";
+    
+    // Insertar notas de prueba para el estudiante
+    $notas_prueba = [
+        ['SIS202412345', 'Programación I', 'INF-111', 85, 2024, '1/2024', 4, 'aprobado'],
+        ['SIS202412345', 'Matemática I', 'MAT-101', 78, 2024, '1/2024', 4, 'aprobado'],
+        ['SIS202412345', 'Física I', 'FIS-100', 82, 2024, '1/2024', 4, 'aprobado'],
+        ['SIS202412345', 'Programación II', 'INF-112', 90, 2024, '2/2024', 4, 'aprobado'],
+        ['SIS202412345', 'Matemática II', 'MAT-102', 75, 2024, '2/2024', 4, 'aprobado'],
+        ['SIS202412345', 'Base de Datos I', 'INF-211', 88, 2024, '2/2024', 4, 'aprobado'],
+        ['SIS202412345', 'Algoritmos', 'INF-213', 92, 2025, '1/2025', 4, 'aprobado'],
+        ['SIS202412345', 'Ingeniería de Software', 'INF-311', 87, 2025, '1/2025', 4, 'aprobado']
+    ];
+    
+    foreach ($notas_prueba as $nota) {
+        $stmt = $pdo->prepare("INSERT INTO academico.notas (codigo_sis, materia, sigla, nota, gestion, periodo, creditos, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute($nota);
+    }
+    echo "Notas de prueba insertadas exitosamente.\n";
     
     // FLUJO F1: Solicitud y Revisión (3 procesos)
     $procesos_f1 = [

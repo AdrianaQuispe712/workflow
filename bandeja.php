@@ -35,6 +35,19 @@ if ($rol == 'alumno') {
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
+
+// Para alumnos: obtener certificados emitidos
+$certificados_emitidos = [];
+if ($rol == 'alumno') {
+    $sql_cert = "SELECT c.*, s.fecha_solicitud 
+                 FROM certificados c 
+                 LEFT JOIN solicitudes s ON c.nrotramite = s.nrotramite
+                 WHERE c.usuario_estudiante = ? 
+                 ORDER BY c.fecha_emision DESC";
+    $stmt_cert = $pdo->prepare($sql_cert);
+    $stmt_cert->execute([$usuario]);
+    $certificados_emitidos = $stmt_cert->fetchAll(PDO::FETCH_ASSOC);
+}
 ?>
 <!DOCTYPE html>
 <html>
@@ -49,6 +62,9 @@ $stmt->execute($params);
         .flujo-f2 { background-color: #f0fff0; }
         .header-info { background-color: #f8f9fa; padding: 10px; margin: 10px 0; }
         .proceso-info { font-size: 0.9em; color: #666; }
+        .certificado-emitido { background-color: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .btn-certificado { background-color: #28a745; color: white; padding: 8px 12px; text-decoration: none; border-radius: 4px; }
+        .btn-certificado:hover { background-color: #218838; }
     </style>
 </head>
 <body>
@@ -62,6 +78,21 @@ $stmt->execute($params);
             </tr>
         </table>
     </div>
+    
+    <?php if ($rol == 'alumno' && !empty($certificados_emitidos)): ?>
+    <h3>🎓 Mis Certificados Emitidos</h3>
+    <?php foreach ($certificados_emitidos as $cert): ?>
+    <div class="certificado-emitido">
+        <h4>✅ Certificado de Notas Aprobado</h4>
+        <p><strong>Número:</strong> <?php echo htmlspecialchars($cert['nro_certificado']); ?></p>
+        <p><strong>Fecha de Emisión:</strong> <?php echo htmlspecialchars($cert['fecha_emision']); ?></p>
+        <p><strong>Tipo:</strong> <?php echo htmlspecialchars($cert['tipo_certificado']); ?></p>
+        <p><strong>Estado:</strong> <?php echo htmlspecialchars($cert['estado']); ?></p>
+        <a href="ver_certificado.php?id=<?php echo $cert['id']; ?>" class="btn-certificado">📄 Ver Certificado de Notas</a>
+    </div>
+    <?php endforeach; ?>
+    <br>
+    <?php endif; ?>
     
     <h3>📋 Trámites Pendientes</h3>
     <table>
